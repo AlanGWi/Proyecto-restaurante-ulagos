@@ -19,6 +19,7 @@ const envio = require('./api/envios');
 const comentario = require('./api/comentarioapi')
 const anuncio = require('./api/anuncioroutes')
 const nota = require('./api/notaRouter')
+const Envio = require('./models/envios');
 
 
 
@@ -84,8 +85,9 @@ const cron = require('node-cron');
 
 //Ejecutar en el minuto 0 de cada hora 01:00, 02:00
 
-cron.schedule('0 * * * *', async () => {
+cron.schedule('0 2 * * *', async () => {
   try {
+    console.log(' Ejecutando limpieza de envíos pendientes antiguos...');
     const ahora = new Date();
 
     // 1. Poner como EXPIRADAS las reservas pendientes cuyo tiempo ya pasó
@@ -113,5 +115,27 @@ cron.schedule('0 * * * *', async () => {
     }
   } catch (error) {
     console.error('Error al actualizar estados de reservas automáticamente:', error);
+  }
+});
+
+
+
+cron.schedule('0 2 * * *', async () => {
+  try {
+    const fechaLimite = new Date();
+    fechaLimite.setDate(fechaLimite.getDate() - 3);
+
+    const resultado = await Envio.deleteMany({
+      estadoEnvio: { $in: ['pendiente', 'enviado'] },
+      fechaEnvio: { $lt: fechaLimite }
+    });
+
+    if (resultado.deletedCount > 0) {
+      console.log(`Limpieza automática: ${resultado.deletedCount} envíos pendientes eliminados.`);
+    } else {
+      console.log('Limpieza automática: No hay envíos pendientes para eliminar.');
+    }
+  } catch (error) {
+    console.error(' Error al limpiar envíos pendientes:', error);
   }
 });

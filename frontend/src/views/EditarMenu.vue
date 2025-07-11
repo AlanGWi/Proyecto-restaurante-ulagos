@@ -25,7 +25,10 @@
               <label class="form-label">Precio sin IVA (19%):</label>
               <div class="input-group">
                 <span class="input-group-text">$</span>
-                <input :value="(form.precio / 1.19).toFixed(0)" class="form-control" readonly  />
+                <input 
+                  :value="Math.round(form.precio / 1.19).toLocaleString('es-CL')" 
+                  class="form-control" readonly 
+                />
               </div>
             </div>
 

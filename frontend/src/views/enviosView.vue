@@ -53,9 +53,14 @@
 
               <div class="d-grid">
                 <button type="submit" class="btn btn-primary">
-                  Confirmar Envío
+                  Confirmar Envío/Actualizar
                 </button>
               </div>
+
+
+              <div v-if="codigoEnvio" class="alert alert-success mt-3">
+   Envío registrado. Tu código de seguimiento es: <strong>{{ codigoEnvio }}</strong>
+</div>
             </form>
           </div>
         </div>
@@ -67,8 +72,14 @@
 <script setup>
 
 import { ref, onMounted } from 'vue'
-import { useRoute,  } from 'vue-router'
+
 import axios from 'axios'
+
+
+import { useRoute, useRouter } from 'vue-router'  // <<--- usa el router
+
+
+const router = useRouter() 
 
 const route = useRoute()
 
@@ -110,9 +121,12 @@ onMounted(async () => {
     } catch (error) {
       console.error("Error al confirmar el pago:", error);
       alert("Hubo un error al verificar el pago.");
+      
     }
   } else {
     alert("Token de Transbank no encontrado.");
+    router.push('/confirmacion');
+    
   }
 });
 
@@ -131,16 +145,14 @@ const usuario = JSON.parse(localStorage.getItem('usuario')) || {}
 if (usuario._id) {
   envio.value.enviadoPorId = usuario._id
 }
-
+const codigoEnvio = ref('')
 const enviarDatosEnvio = async () => {
-
-
-
 
   try {
     const res = await axios.post('http://localhost:3000/api/envios/crear', envio.value)
     console.log('Envío registrado:', res.data)
-    alert(`Envío registrado correctamente. Código: ${res.data.codigoEnvio}`)
+    //alert(`Envío registrado correctamente. Código: ${res.data.codigoEnvio}`)
+    codigoEnvio.value = res.data.codigoEnvio
    // router.push('/') // Redirige a donde necesites
   } catch (error) {
     console.error('Error al registrar el envío:', error.response?.data || error.message)

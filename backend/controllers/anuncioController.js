@@ -51,13 +51,19 @@ export const editarAnuncio = async (req, res) => {
         return res.status(400).json({ error: 'La fecha de inicio no puede ser mayor que la fecha de fin' });
       }
     }
+
+
+    if (!mensaje || mensaje.trim() === '') {
+  return res.status(400).json({ error: 'El mensaje no puede estar vacío ni ser solo espacios.' });
+}
     
 
     if (req.file && anuncio.imagen) {
       fs.unlinkSync(`anuncios/${anuncio.imagen}`); // borra imagen anterior
     }
 
-    anuncio.mensaje = mensaje;
+ 
+anuncio.mensaje = mensaje.trim();
     anuncio.fecha_inicio = fecha_inicio;
     anuncio.fecha_fin = fecha_fin;
     anuncio.visible = visible;

@@ -1,45 +1,40 @@
 <template>
   <div>
     <HederViewVue></HederViewVue>
-    <div class="container mt-5">
-      <div class="row justify-content-center">
-        <div class="col-md-8">
-          <div class="card">
-            <div class="card-header">dias</div>
+    <div class="container my-5">
+      <div class="row g-4">
+        <!-- Card: Días -->
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white">Días</div>
             <div class="card-body">
-              <canvas id="myChartDays" ></canvas> 
+              <canvas id="myChartDays"></canvas>
             </div>
           </div>
         </div>
-      </div>
 
-
-      <div class="row justify-content-center">
-        <div class="col-md-8">
-          <div class="card">
-            <div class="card-header">meses</div>
+        <!-- Card: Meses -->
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-success text-white">Meses</div>
             <div class="card-body">
-              <canvas id="myChartMonths" ></canvas> 
+              <canvas id="myChartMonths"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card: Años -->
+        <div class="col-12 col-md-6 col-lg-4">
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-warning text-dark">Años</div>
+            <div class="card-body">
+              <canvas id="myChartYears"></canvas>
             </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-
-
-  <div class="row justify-content-center">
-        <div class="col-md-8">
-          <div class="card">
-            <div class="card-header">años</div>
-            <div class="card-body">
-              <canvas id="myChartYears" ></canvas> 
-            </div>
-          </div>
-        </div>
-      </div>
-    
-
 </template>
 
 <script>
