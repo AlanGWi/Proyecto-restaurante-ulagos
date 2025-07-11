@@ -1,0 +1,379 @@
+<template>
+  <HederViewVue />
+
+  <div class="container-fluid p-4">
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+
+        <!-- 🔘 BOTONES DE VISTA -->
+        <div class="btn-toolbar mb-4" role="toolbar">
+          <div class="btn-group me-2" role="group">
+            <button @click="vista = 'principal'" class="btn btn-outline-primary">
+              Vista Principal
+            </button>
+          </div>
+          <div class="btn-group" role="group">
+            <button
+              v-for="lugar in lugaresFabricacion"
+              :key="lugar"
+              @click="vista = lugar"
+              class="btn btn-outline-secondary"
+            >
+              {{ lugar }}
+            </button>
+          </div>
+        </div>
+
+        <!-- ✅ VISTA PRINCIPAL: MESAS + ENVÍOS -->
+        <div v-if="vista === 'principal'">
+
+          <!-- 🔵 PEDIDOS EN MESAS -->
+          <h2 class="h5 mb-3 text-primary">
+            Pedidos en Mesas ({{ pedidos.filter(p => !p.esEnvio).length }})
+          </h2>
+
+          <div
+            v-for="pedido in pedidos.filter(p => !p.esEnvio)"
+            :key="pedido._id"
+            class="card mb-4 shadow-sm border-primary"
+          >
+            <!-- 🔹 Header Mesa -->
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <div>
+                <strong>Mesa:</strong>
+                <select
+                  :value="pedido.mesa._id"
+                  @change="actualizarMesa(pedido._id, $event.target.value)"
+                  :disabled="pedido.confirmado"
+                  class="form-control d-inline-block w-auto mx-2"
+                  style="max-width: 100px"
+                >
+                  <option v-for="mesa in mesas" :key="mesa._id" :value="mesa._id">
+                    {{ mesa.numero }}
+                  </option>
+                </select>
+                <strong>Total:</strong> ${{ pedido.total }} |
+                <strong>Confirmado:</strong> {{ pedido.confirmado ? 'Sí' : 'No' }} |
+                <strong>Terminado:</strong> {{ pedido.inhabilitar ? 'Sí' : 'No' }}
+              </div>
+              <div>
+                <button
+                  @click="confirmarPedido(pedido._id)"
+                  v-if="!pedido.confirmado"
+                  class="btn btn-sm btn-outline-primary me-2"
+                >
+                  Confirmar
+                </button>
+                <button
+                  @click="inhabilitarPedido(pedido._id)"
+                  v-if="!pedido.inhabilitar"
+                  class="btn btn-sm btn-outline-danger"
+                >
+                  Terminar
+                </button>
+              </div>
+            </div>
+
+            <!-- 🔹 Tabla Items -->
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Producto</th>
+                      <th>Precio</th>
+                      <th>Cantidad</th>
+                      <th>Preparado</th>
+                      <th>Servido</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(item, index) in pedido.items" :key="item._id + index">
+                      <td>{{ item.producto?.nombre || 'Sin nombre' }}</td>
+                      <td>${{ item.producto?.precio }}</td>
+                      <td>
+                        <div>
+                          <button
+                            @click="actualizarCantidad(pedido._id, item._id, item.cantidad - 1)"
+                            :disabled="pedido.confirmado || item.cantidad <= 1"
+                            class="btn btn-sm btn-outline-secondary"
+                          >−</button>
+                          <span class="mx-2">{{ item.cantidad }}</span>
+                          <button
+                            @click="actualizarCantidad(pedido._id, item._id, item.cantidad + 1)"
+                            :disabled="pedido.confirmado"
+                            class="btn btn-sm btn-outline-secondary"
+                          >+</button>
+                        </div>
+                      </td>
+                      <td>{{ item.preparado ? 'Sí' : 'No' }}</td>
+                      <td>{{ item.servido ? 'Sí' : 'No' }}</td>
+                      <td>
+                        <div class="d-flex flex-wrap gap-1">
+                          <button
+                            @click="() => { actualizarEstado(pedido._id, item._id, 'servido'); actualizarServidoPor(pedido._id); }"
+                            class="btn btn-sm btn-success"
+                          >
+                            Servir
+                          </button>
+                          <button
+                            @click="eliminarProducto(pedido._id, item.producto._id)"
+                            class="btn btn-sm btn-warning"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 🔹 Notas -->
+            <div class="mt-2">
+              <textarea
+                v-model="nuevaNota[pedido._id]"
+                class="form-control mb-2"
+                placeholder="Escribe una nota..."
+              ></textarea>
+              <button
+                @click="agregarNota(pedido._id)"
+                class="btn btn-sm btn-primary"
+              >
+                Agregar nota
+              </button>
+            </div>
+
+            <div
+              v-if="notasPorPedido[pedido._id]?.length > 0"
+              class="px-3 py-2 bg-light border-top"
+            >
+              <h6 class="fw-bold">Notas internas:</h6>
+              <ul class="list-unstyled mb-0">
+                <li v-for="nota in notasPorPedido[pedido._id]" :key="nota._id">
+                  <textarea
+                    class="form-control mb-2"
+                    v-model="nota.mensaje"
+                    @blur="editarNota(nota)"
+                  ></textarea>
+                  <button
+                    class="btn btn-sm btn-warning"
+                    @click="eliminarNota(nota._id, pedido._id)"
+                  >
+                    Eliminar
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="card-footer text-end">
+              <button
+                @click="eliminarPedido(pedido._id)"
+                class="btn btn-sm btn-danger"
+              >
+                Eliminar Pedido
+              </button>
+            </div>
+          </div>
+
+          <!-- 🔵 PEDIDOS EN ENVÍO -->
+
+
+
+           <!-- 🔵 PEDIDOS EN MESAS -->
+          <h2 class="h5 mb-3 text-primary">
+            Pedidos en Mesas ({{ pedidos.filter(p => p.esEnvio).length }})
+          </h2>
+
+          <div
+            v-for="pedido in pedidos.filter(p => p.esEnvio)"
+            :key="pedido._id"
+            class="card mb-4 shadow-sm border-primary"
+          >
+            <!-- 🔹 Header Mesa -->
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <div>
+                <strong>Envio:</strong>
+          
+                <strong>Total:</strong> ${{ pedido.total }} |
+                <strong>Confirmado:</strong> {{ pedido.confirmado ? 'Sí' : 'No' }} |
+                <strong>Terminado:</strong> {{ pedido.inhabilitar ? 'Sí' : 'No' }}
+              </div>
+              <div>
+                <button
+                  @click="confirmarPedido(pedido._id)"
+                  v-if="!pedido.confirmado"
+                  class="btn btn-sm btn-outline-primary me-2"
+                >
+                  Confirmar
+                </button>
+                <button
+                  @click="inhabilitarPedido(pedido._id)"
+                  v-if="!pedido.inhabilitar"
+                  class="btn btn-sm btn-outline-danger"
+                >
+                  Terminar
+                </button>
+              </div>
+            </div>
+
+            <!-- 🔹 Tabla Items -->
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Producto</th>
+                      <th>Precio</th>
+                      <th>Preparado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(item, index) in pedido.items" :key="item._id + index">
+                      <td>{{ item.producto?.nombre || 'Sin nombre' }}</td>
+                      <td>${{ item.producto?.precio }}</td>
+                    
+                      <td>{{ item.preparado ? 'Sí' : 'No' }}</td>
+                     
+                      <td>
+
+                        <button
+                @click="cambiarEstadoEnvio(pedido.envio?._id)"
+                class="btn btn-success btn-sm me-2"
+              >
+                Marcar como Enviado
+              </button>
+              <button
+                @click="cambiarEstadoEnvio(pedido.envio?._id)"
+                class="btn btn-success btn-sm"
+              >
+                Entregado
+              </button>
+                
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 🔹 Notas -->
+            <div class="mt-2">
+              <textarea
+                v-model="nuevaNota[pedido._id]"
+                class="form-control mb-2"
+                placeholder="Escribe una nota..."
+              ></textarea>
+              <button
+                @click="agregarNota(pedido._id)"
+                class="btn btn-sm btn-primary"
+              >
+                Agregar nota
+              </button>
+            </div>
+
+            <div
+              v-if="notasPorPedido[pedido._id]?.length > 0"
+              class="px-3 py-2 bg-light border-top"
+            >
+              <h6 class="fw-bold">Notas internas:</h6>
+              <ul class="list-unstyled mb-0">
+                <li v-for="nota in notasPorPedido[pedido._id]" :key="nota._id">
+                  <textarea
+                    class="form-control mb-2"
+                    v-model="nota.mensaje"
+                    @blur="editarNota(nota)"
+                  ></textarea>
+                  <button
+                    class="btn btn-sm btn-warning"
+                    @click="eliminarNota(nota._id, pedido._id)"
+                  >
+                    Eliminar
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="card-footer text-end">
+              <button
+                @click="eliminarPedido(pedido._id)"
+                class="btn btn-sm btn-danger"
+              >
+                Eliminar Pedido
+              </button>
+            </div>
+          </div>
+          
+          
+
+        </div>
+
+        <!-- ✅ ÁREA DE FABRICACIÓN -->
+        <div v-else>
+          <h2 class="h4 fw-bold mb-4">Área de Fabricación: {{ vista }}</h2>
+
+          <div class="row g-3">
+            <div
+              class="col-md-6 col-lg-4"
+              v-for="pedido in pedidos.filter(p => p.confirmado)"
+              :key="pedido._id"
+            >
+              <div
+                v-for="item in pedido.items.filter(i =>
+                  i.producto.lugar_fabricacion === vista &&
+                  !(i.preparado && i.retirado)
+                )"
+                :key="item._id"
+                class="card h-100"
+              >
+                <div class="card-body">
+                  <h5 class="card-title">{{ item.producto.nombre }}</h5>
+                  <p class="card-text">
+                    <strong>Cantidad:</strong> {{ item.cantidad }}<br />
+                    <strong>Preparado:</strong> {{ item.preparado ? 'Sí' : 'No' }}<br />
+                    <strong>Retirado:</strong> {{ item.retirado ? 'Sí' : 'No' }}
+                  </p>
+                </div>
+
+                <div
+                  v-if="notasPorPedido[pedido._id]?.length > 0"
+                  class="bg-light p-2 mt-2 rounded"
+                >
+                  <h6 class="mb-1">Notas internas:</h6>
+                  <ul class="list-unstyled mb-0">
+                    <li
+                      v-for="nota in notasPorPedido[pedido._id]"
+                      :key="nota._id"
+                      class="fst-italic text-muted"
+                    >
+                      {{ nota.mensaje }}
+                    </li>
+                  </ul>
+                </div>
+
+                <div class="card-footer d-flex justify-content-between">
+                  <button
+                    @click="actualizarEstado(pedido._id, item._id, 'preparado')"
+                    class="btn btn-sm btn-primary"
+                  >
+                    Marcar preparado
+                  </button>
+                  <button
+                    @click="actualizarEstado(pedido._id, item._id, 'retirado')"
+                    class="btn btn-sm btn-success"
+                  >
+                    Marcar retirado
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</template>
